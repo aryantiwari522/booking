@@ -6,11 +6,9 @@ import lombok.*;
 @Entity
 @Table(name = "teachers")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
-public class Teacher {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class Teacher extends BaseEntity {
     private String name;
 }

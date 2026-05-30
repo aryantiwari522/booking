@@ -17,6 +17,15 @@ public abstract class BaseEntity {
     private Instant createdAt = Instant.now();
     private Instant updatedAt;
 
+    @PrePersist
+    public void prePersist() {
+        Instant now = Instant.now();
+        if (this.createdAt == null) this.createdAt = now;
+        this.updatedAt = now;
+    }
+
     @PreUpdate
-    public void preUpdate() { this.updatedAt = Instant.now(); }
+    public void preUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

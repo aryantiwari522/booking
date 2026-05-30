@@ -1,12 +1,15 @@
 package com.booking.controller;
 
 import com.booking.dto.request.AddSessionsRequest;
+import com.booking.dto.request.CreateCourseRequest;
 import com.booking.dto.request.CreateOfferingRequest;
 import com.booking.dto.request.CreateUserRequest;
 import com.booking.entity.Offering;
 import com.booking.entity.Session;
 import com.booking.entity.Teacher;
+import com.booking.entity.Course;
 import com.booking.repository.TeacherRepository;
+import com.booking.repository.CourseRepository;
 import com.booking.service.OfferingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,10 +21,12 @@ import java.util.List;
 public class TeacherController {
     private final OfferingService offeringService;
     private final TeacherRepository teacherRepository;
+    private final CourseRepository courseRepository;
 
-    public TeacherController(OfferingService offeringService, TeacherRepository teacherRepository) {
+    public TeacherController(OfferingService offeringService, TeacherRepository teacherRepository, CourseRepository courseRepository) {
         this.offeringService = offeringService;
         this.teacherRepository = teacherRepository;
+        this.courseRepository = courseRepository;
     }
 
     @PostMapping
@@ -42,6 +47,17 @@ public class TeacherController {
     public ResponseEntity<List<Session>> addSessions(@PathVariable Long teacherId, @PathVariable Long offeringId, @RequestBody AddSessionsRequest req) {
         List<Session> sessions = offeringService.addSessions(teacherId, offeringId, req);
         return ResponseEntity.ok(sessions);
+    }
+
+    @PostMapping("/{teacherId}/courses")
+    public ResponseEntity<Course> createCourse(@PathVariable Long teacherId, @RequestBody CreateCourseRequest req) {
+        // validate teacher exists
+        Teacher t = teacherRepository.findById(teacherId).orElseThrow(() -> new IllegalArgumentException("Teacher not found"));
+        Course c = new Course();
+        c.setTitle(req.getTitle());
+        c.setTeacherId(t.getId());
+        Course saved = courseRepository.save(c);
+        return ResponseEntity.ok(saved);
     }
 
     @GetMapping("/{teacherId}/offerings")

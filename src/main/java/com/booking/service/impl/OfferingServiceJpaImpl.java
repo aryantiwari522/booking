@@ -43,6 +43,13 @@ public class OfferingServiceJpaImpl implements OfferingService {
             Course c = courseRepository.findById(req.getCourseId()).orElse(null);
             o.setCourse(c);
         }
+        else{
+            Course c = new Course();
+            c.setTitle(req.getTitle());
+            c.setTeacherId(t.getId());
+            Course saved = courseRepository.save(c);
+            o.setCourse(saved);
+        }
         return offeringRepository.save(o);
     }
 
