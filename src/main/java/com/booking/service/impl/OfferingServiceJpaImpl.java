@@ -72,6 +72,8 @@ public class OfferingServiceJpaImpl implements OfferingService {
     @Override
     public List<Session> addSessions(Long teacherId, Long offeringId, AddSessionsRequest req) {
         Offering o = offeringRepository.findById(offeringId).orElseThrow(() -> new IllegalArgumentException("Offering not found"));
+        Teacher t = teacherRepository.findById(teacherId).orElseThrow(() -> new IllegalArgumentException("Teacher not found"));
+
         if (o.getTeacher() == null || !o.getTeacher().getId().equals(teacherId)) {
             throw new IllegalArgumentException("Teacher does not own offering");
         }

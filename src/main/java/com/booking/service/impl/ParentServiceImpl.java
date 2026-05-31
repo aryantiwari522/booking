@@ -20,9 +20,10 @@ public class ParentServiceImpl implements ParentService {
     }
 
     @Override
-    public Parent createParent(String name) {
+    public Parent createParent(String name, String timezone) {
         Parent p = new Parent();
         p.setName(name);
+        p.setTimezone(timezone);
         return parentRepository.save(p);
     }
 

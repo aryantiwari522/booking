@@ -1,5 +1,6 @@
 package com.booking.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,5 +27,6 @@ public class Booking {
     private Instant createdAt;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "booking")
+    @JsonManagedReference
     private List<BookingSession> sessions = new ArrayList<>();
 }

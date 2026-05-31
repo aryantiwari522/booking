@@ -6,6 +6,6 @@ import com.booking.entity.Booking;
 import java.util.List;
 
 public interface ParentService {
-    Parent createParent(String name);
+    Parent createParent(String name, String timezone);
     List<Booking> getBookings(Long parentId);
 }
