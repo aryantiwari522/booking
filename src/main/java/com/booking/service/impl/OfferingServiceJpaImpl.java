@@ -8,6 +8,7 @@ import com.booking.repository.*;
 import com.booking.service.OfferingService;
 import com.booking.util.TimezoneUtil;
 import com.booking.validation.TimezoneValidator;
+import com.booking.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +41,8 @@ public class OfferingServiceJpaImpl implements OfferingService {
         o.setTimezone(req.getTimezone());
         o.setTeacher(t);
         if (req.getCourseId() != null) {
-            Course c = courseRepository.findById(req.getCourseId()).orElse(null);
+            Course c = courseRepository.findById(req.getCourseId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
             o.setCourse(c);
         }
         else{
@@ -61,6 +63,11 @@ public class OfferingServiceJpaImpl implements OfferingService {
     @Override
     public List<Offering> listOfferingsByTeacher(Long teacherId) {
         return offeringRepository.findByTeacherId(teacherId);
+    }
+
+    @Override
+    public List<Offering> listOfferingsByCourse(Long courseId) {
+        return offeringRepository.findByCourseId(courseId);
     }
 
     @Override

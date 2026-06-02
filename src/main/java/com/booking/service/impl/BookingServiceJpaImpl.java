@@ -3,9 +3,11 @@ package com.booking.service.impl;
 import com.booking.entity.*;
 import com.booking.exception.BookingConflictException;
 import com.booking.exception.DuplicateBookingException;
+import com.booking.exception.ResourceNotFoundException;
 import com.booking.repository.*;
 import com.booking.service.BookingService;
 import com.booking.util.SessionOverlapUtil;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,36 +30,19 @@ public class BookingServiceJpaImpl implements BookingService {
     }
 
     @Override
-    public Booking bookOffering(Long parentId, Long offeringId) {
-        int attempts = 3;
-        for (int i = 0; i < attempts; i++) {
-            try {
-                return doBook(parentId, offeringId);
-            } catch (BookingConflictException | DuplicateBookingException ex) {
-                throw ex;
-            } catch (Exception ex) {
-                if (i == attempts - 1) throw new RuntimeException("Failed to book after retries", ex);
-                try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-            }
-        }
-        throw new RuntimeException("unreachable");
-    }
-
     @Transactional(isolation = Isolation.SERIALIZABLE)
-    protected Booking doBook(Long parentId, Long offeringId) {
-        Parent parent = parentRepository.findById(parentId).orElseThrow(() -> new IllegalArgumentException("Parent not found"));
-        Offering offering = offeringRepository.findById(offeringId).orElseThrow(() -> new IllegalArgumentException("Offering not found"));
+    public Booking bookOffering(Long parentId, Long offeringId) {
+        Parent parent = parentRepository.findById(parentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Parent not found"));
+        Offering offering = offeringRepository.findById(offeringId)
+                .orElseThrow(() -> new ResourceNotFoundException("Offering not found"));
 
-        // check duplicate: parent already booked this offering
-        List<Booking> existingForParent = bookingRepository.findByParentId(parentId);
-        for (Booking b : existingForParent) {
-            if (b.getOffering() != null && b.getOffering().getId().equals(offeringId)) {
-                throw new DuplicateBookingException("Parent already booked this offering");
-            }
+        if (bookingRepository.existsByParentIdAndOfferingId(parentId, offeringId)) {
+            throw new DuplicateBookingException("Parent already booked this offering");
         }
 
+        List<Booking> existingForParent = bookingRepository.findByParentId(parentId);
         List<Session> offeringSessions = sessionRepository.findByOfferingId(offeringId);
-        // check conflicts
         for (Booking b : existingForParent) {
             for (BookingSession bs : b.getSessions()) {
                 for (Session s : offeringSessions) {
@@ -72,7 +57,6 @@ public class BookingServiceJpaImpl implements BookingService {
         booking.setParent(parent);
         booking.setOffering(offering);
         booking.setCreatedAt(Instant.now());
-        booking = bookingRepository.save(booking);
 
         for (Session s : offeringSessions) {
             BookingSession bs = new BookingSession();
@@ -83,7 +67,10 @@ public class BookingServiceJpaImpl implements BookingService {
             booking.getSessions().add(bs);
         }
 
-        booking = bookingRepository.save(booking);
-        return booking;
+        try {
+            return bookingRepository.saveAndFlush(booking);
+        } catch (DataIntegrityViolationException ex) {
+            throw new DuplicateBookingException("Parent already booked this offering");
+        }
     }
 }

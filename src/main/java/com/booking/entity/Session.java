@@ -15,8 +15,12 @@ public class Session {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "offering_id", nullable = false)
     private Offering offering;
 
+    @Column(nullable = false)
     private Instant startAt;
+
+    @Column(nullable = false)
     private Instant endAt;
 }

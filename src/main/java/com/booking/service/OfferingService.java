@@ -11,6 +11,7 @@ public interface OfferingService {
     Offering createOffering(Long teacherId, CreateOfferingRequest req);
     List<Offering> listAll();
     List<Offering> listOfferingsByTeacher(Long teacherId);
+    List<Offering> listOfferingsByCourse(Long courseId);
     List<Session> getSessionsForOffering(Long offeringId);
     List<Session> addSessions(Long teacherId, Long offeringId, AddSessionsRequest req);
 }

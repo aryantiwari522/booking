@@ -17,11 +17,14 @@ public class BookingSession {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_id")
+    @JoinColumn(name = "booking_id", nullable = false)
     @JsonBackReference
     private Booking booking;
 
+    @Column(nullable = false)
     private Instant startAt;
+
+    @Column(nullable = false)
     private Instant endAt;
 
     private Long sessionRefId;

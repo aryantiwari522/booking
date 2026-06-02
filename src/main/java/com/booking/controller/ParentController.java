@@ -4,9 +4,13 @@ import com.booking.dto.request.BookingRequest;
 import com.booking.dto.request.CreateUserRequest;
 import com.booking.dto.response.BookingResponse;
 import com.booking.dto.response.CourseWithTeacherResponse;
+import com.booking.dto.response.OfferingResponse;
+import com.booking.dto.response.OfferingSessionsLocalResponse;
 import com.booking.dto.response.SessionLocalTimeResponse;
+import com.booking.dto.response.UserResponse;
 import com.booking.entity.*;
 import com.booking.mapper.BookingMapper;
+import com.booking.mapper.OfferingMapper;
 import com.booking.repository.CourseRepository;
 import com.booking.repository.ParentRepository;
 import com.booking.repository.SessionRepository;
@@ -14,11 +18,13 @@ import com.booking.repository.TeacherRepository;
 import com.booking.service.BookingService;
 import com.booking.service.OfferingService;
 import com.booking.service.ParentService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -29,77 +35,44 @@ public class ParentController {
     private final BookingService bookingService;
     private final OfferingService offeringService;
     private final ParentService parentService;
-    private final CourseRepository courseReposiory;
-    private final TeacherRepository teacherRepository;
-    private final ParentRepository parentRepository;
-    private final SessionRepository sessionRepository;
 
-    public ParentController(BookingService bookingService, OfferingService offeringService, ParentService parentService, CourseRepository courseReposiory, TeacherRepository teacherRepository, ParentRepository parentRepository, SessionRepository sessionRepository) {
+    public ParentController(BookingService bookingService, OfferingService offeringService, ParentService parentService) {
         this.bookingService = bookingService;
         this.offeringService = offeringService;
         this.parentService = parentService;
-        this.courseReposiory = courseReposiory;
-        this.teacherRepository = teacherRepository;
-        this.parentRepository = parentRepository;
-        this.sessionRepository = sessionRepository;
     }
 
     @PostMapping
-    public ResponseEntity<Parent> createParent(@RequestBody CreateUserRequest req) {
+    public ResponseEntity<UserResponse> createParent(@Valid @RequestBody CreateUserRequest req) {
         Parent p = parentService.createParent(req.getName(), req.getTimezone());
-        return ResponseEntity.ok(p);
+        return ResponseEntity.ok(new UserResponse(p.getId(), p.getName(), p.getTimezone()));
     }
 
     @GetMapping("/courses")
     public ResponseEntity<List<CourseWithTeacherResponse>> listCoursesWithTeachers() {
 
-        List<Course> courses = courseReposiory.findAll();
-        List<CourseWithTeacherResponse> result = courses.stream().map(course -> {
-            Optional<Teacher> teacherOpt = teacherRepository.findById(course.getTeacherId());
-            String teacherName = teacherOpt.map(Teacher::getName).orElse("Unknown");
-            Long teacherId = teacherOpt.map(Teacher::getId).orElse(null);
-            return new CourseWithTeacherResponse(course.getId(), course.getTitle(), teacherId, teacherName);
-        }).collect(Collectors.toList());
+        List<CourseWithTeacherResponse> result = parentService.getCourseWithTeacherResponses();
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/offerings/{courseId}/parent/{parentId}")
-    public ResponseEntity<?> listOfferingsByCourseWithSessionsInParentTimezone(@PathVariable Long courseId, @PathVariable Long parentId) {
-        Parent parent = parentRepository.findById(parentId).orElse(null);
-        if (parent == null || parent.getTimezone() == null) {
-            return ResponseEntity.badRequest().body("Parent or timezone not found");
-        }
-        ZoneId zoneId = ZoneId.of(parent.getTimezone());
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
-        List<Offering> offerings = offeringService.listAll().stream()
-                .filter(offering -> offering.getCourse() != null && offering.getCourse().getId().equals(courseId))
-                .toList();
-        var result = offerings.stream().map(offering -> {
-            List<Session> sessions = sessionRepository.findByOfferingId(offering.getId());
-            List<SessionLocalTimeResponse> sessionDtos = sessions.stream().map(session -> new SessionLocalTimeResponse(
-                    session.getId(),
-                    session.getStartAt().atZone(zoneId).format(formatter),
-                    session.getEndAt().atZone(zoneId).format(formatter)
-            )).collect(Collectors.toList());
-            return new Object() {
-                public final Long offeringId = offering.getId();
-                public final String offeringTitle = offering.getTitle();
-                public final List<SessionLocalTimeResponse> sessions = sessionDtos;
-            };
-        }).collect(Collectors.toList());
+    public ResponseEntity<List<OfferingSessionsLocalResponse>> listOfferingsByCourseWithSessionsInParentTimezone(@PathVariable Long courseId, @PathVariable Long parentId) {
+        var result = parentService.getOfferingSessionsLocalResponses(courseId, parentId);
         return ResponseEntity.ok(result);
     }
 
+
+
     @GetMapping("/{courseId}/offerings")
-    public ResponseEntity<List<Offering>> listOfferings(@PathVariable Long courseId) {
-        List<Offering> offerings = offeringService.listAll().stream()
-                .filter(offering -> offering.getCourse() != null && offering.getCourse().getId().equals(courseId))
-                .collect(Collectors.toList());
+    public ResponseEntity<List<OfferingResponse>> listOfferings(@PathVariable Long courseId) {
+        List<OfferingResponse> offerings = offeringService.listOfferingsByCourse(courseId).stream()
+                .map(offering -> OfferingMapper.toResponse(offering, offeringService.getSessionsForOffering(offering.getId())))
+                .toList();
         return ResponseEntity.ok(offerings);
     }
 
     @PostMapping("/bookings")
-    public ResponseEntity<BookingResponse> book(@RequestBody BookingRequest req) {
+    public ResponseEntity<BookingResponse> book(@Valid @RequestBody BookingRequest req) {
         Booking b = bookingService.bookOffering(req.getParentId(), req.getOfferingId());
         return ResponseEntity.ok(BookingMapper.toResponse(b));
     }
@@ -109,5 +82,11 @@ public class ParentController {
         List<Booking> bookings = parentService.getBookings(parentId);
         List<BookingResponse> resp = bookings.stream().map(BookingMapper::toResponse).collect(Collectors.toList());
         return ResponseEntity.ok(resp);
+    }
+
+    @DeleteMapping("/{parentId}/bookings/{bookingId}")
+    public ResponseEntity<Void> deleteBooking(@PathVariable Long parentId, @PathVariable Long bookingId) {
+        parentService.deleteBooking(parentId, bookingId);
+        return ResponseEntity.noContent().build();
     }
 }

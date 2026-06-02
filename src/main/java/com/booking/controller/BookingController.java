@@ -1,6 +1,7 @@
 package com.booking.controller;
 
-import com.booking.entity.Booking;
+import com.booking.dto.response.BookingResponse;
+import com.booking.mapper.BookingMapper;
 import com.booking.repository.BookingRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +20,7 @@ public class BookingController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Booking>> listAll() {
-        return ResponseEntity.ok(bookingRepository.findAll());
+    public ResponseEntity<List<BookingResponse>> listAll() {
+        return ResponseEntity.ok(bookingRepository.findAll().stream().map(BookingMapper::toResponse).toList());
     }
 }
